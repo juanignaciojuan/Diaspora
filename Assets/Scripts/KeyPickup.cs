@@ -11,7 +11,7 @@ public class KeyPickup : MonoBehaviour
     [SerializeField] private GameObject outlineVisual;
 
     private bool collected = false;
-    private bool isHovered = false; // NEW: tracks hover state
+    private bool isHovered = false;
 
     private void Start()
     {
@@ -33,11 +33,14 @@ public class KeyPickup : MonoBehaviour
 
         if (Physics.Raycast(ray, out RaycastHit hit, pickupDistance, keyLayerMask))
         {
+            Debug.Log($"[KeyPickup] Raycast hit: {hit.collider.name}");
+
             if (hit.collider.gameObject == gameObject)
             {
+                Debug.Log("[KeyPickup] Hovering key: " + gameObject.name);
                 hitThisFrame = true;
 
-                if (!isHovered) // just started hovering
+                if (!isHovered)
                 {
                     EnableOutline();
                     UIManager.instance.ShowLiveMessage("Tomar la llave");
@@ -45,13 +48,20 @@ public class KeyPickup : MonoBehaviour
                 }
 
                 if (Mouse.current.leftButton.wasPressedThisFrame)
+                {
+                    Debug.Log("[KeyPickup] Mouse click detected on key: " + gameObject.name);
                     PickupKey();
+                }
             }
         }
+        else
+        {
+            Debug.Log("[KeyPickup] Raycast did not hit anything");
+        }
 
-        // Instantly disable when not looking
         if (!hitThisFrame && isHovered)
         {
+            Debug.Log("[KeyPickup] Stopped hovering key: " + gameObject.name);
             DisableOutline();
             UIManager.instance.ClearMessage();
             isHovered = false;
@@ -61,6 +71,7 @@ public class KeyPickup : MonoBehaviour
     private void PickupKey()
     {
         collected = true;
+        Debug.Log("[KeyPickup] Key collected: " + gameObject.name);
 
         GameManager.instance.hasKey = true;
 
@@ -68,9 +79,6 @@ public class KeyPickup : MonoBehaviour
         UIManager.instance.ShowMessage("Llave tomada");
 
         pickupSound?.Play();
-
-        /*if (doorToUnlock != null)
-            doorToUnlock.Unlock();*/
 
         Destroy(gameObject, pickupSound != null ? pickupSound.clip.length : 0.1f);
     }

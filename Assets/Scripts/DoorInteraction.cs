@@ -20,7 +20,7 @@ public class DoorInteraction : MonoBehaviour
     private bool doorOpen = false;
     private bool isRotating = false;
     private bool wasUnlocked = false;
-    private bool isHovered = false; // NEW: tracks hover state
+    private bool isHovered = false;
     private Quaternion targetRotation;
     private Transform pivot;
 
@@ -46,11 +46,13 @@ public class DoorInteraction : MonoBehaviour
 
         if (Physics.Raycast(ray, out RaycastHit hit, interactionDistance))
         {
-            if (hit.collider.gameObject == gameObject)
+            Debug.Log("[DoorInteraction] Raycast hit: " + hit.collider.name + " | Layer: " + LayerMask.LayerToName(hit.collider.gameObject.layer));
+
+            if (hit.collider.transform == transform || hit.collider.transform.IsChildOf(transform))
             {
                 hitThisFrame = true;
 
-                if (!isHovered) // just started hovering
+                if (!isHovered)
                 {
                     EnableOutline();
                     ShowHoverMessage();
@@ -58,11 +60,19 @@ public class DoorInteraction : MonoBehaviour
                 }
 
                 if (Mouse.current.leftButton.wasPressedThisFrame)
+                {
+                    Debug.Log("[DoorInteraction] Click detected on: " + gameObject.name);
                     TryInteract();
+                }
             }
         }
+        else
+        {
+            Debug.Log("[DoorInteraction] Raycast did not hit anything");
+        }
 
-        // If no longer looking at this door → instantly disable
+
+        // Si ya no lo estamos mirando → ocultar al instante
         if (!hitThisFrame && isHovered)
         {
             DisableOutline();
@@ -71,7 +81,7 @@ public class DoorInteraction : MonoBehaviour
             isHovered = false;
         }
 
-        // Door rotation
+        // Puerta rotando
         if (isRotating && pivot != null)
         {
             pivot.rotation = Quaternion.Lerp(pivot.rotation, targetRotation, Time.deltaTime * rotationSpeed);
@@ -85,25 +95,33 @@ public class DoorInteraction : MonoBehaviour
 
     public void TryInteract()
     {
+        Debug.Log("[DoorInteraction] TryInteract called on " + gameObject.name);
+
         if (requiresKey && (!GameManager.instance || !GameManager.instance.hasKey))
         {
-            UIManager.instance.ShowMessage("Puerta cerrada");
+            Debug.Log("[DoorInteraction] Door locked, no key.");
+            UIManager.instance?.ShowMessage("Puerta cerrada");
             lockedSound?.Play();
             return;
         }
 
         if (requiresKey && !wasUnlocked)
         {
+            Debug.Log("[DoorInteraction] Unlocking door...");
             Unlock();
-        }        ToggleDoor();
+        }
+
+        Debug.Log("[DoorInteraction] Toggling door...");
+        ToggleDoor();
     }
 
     public void ShowHoverMessage()
     {
-        // If locked, show nothing until clicked
         if (requiresKey && (!GameManager.instance || !GameManager.instance.hasKey))
         {
+            // 🔑 Si está cerrada con llave, no muestra nada hasta hacer click
             UIManager.instance.ShowLiveMessage("Abrir la puerta");
+            return;
         }
         else
         {

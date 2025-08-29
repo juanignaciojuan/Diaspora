@@ -8,6 +8,7 @@ public class GameStartManager : MonoBehaviour
     [Header("UI Elements")]
     public GameObject blackScreenObject;
     public Button playButton;
+    public Button skipButton;   // NUEVO botón para saltar intro
     public AudioSource introAudio;
 
     [Header("Fade Settings")]
@@ -25,15 +26,32 @@ public class GameStartManager : MonoBehaviour
         Cursor.visible = true;
 
         blackScreen = blackScreenObject.GetComponent<Image>();
-        playButton.onClick.AddListener(BeginGame);
+
+        if (playButton != null)
+            playButton.onClick.AddListener(BeginGame);
+
+        if (skipButton != null)
+            skipButton.onClick.AddListener(SkipIntro);
 
         if (playerController != null)
             playerController.enabled = false;
     }
 
+    void Update()
+    {
+        // Atajo de teclado: tecla J para saltar intro
+        if (Input.GetKeyDown(KeyCode.J))
+        {
+            SkipIntro();
+        }
+    }
+
     public void BeginGame()
     {
         playButton.gameObject.SetActive(false);
+        if (skipButton != null)
+            skipButton.gameObject.SetActive(false);
+
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
 
@@ -41,6 +59,33 @@ public class GameStartManager : MonoBehaviour
         if (introAudio != null) introAudio.Play();
 
         StartCoroutine(FadeAndEnablePlayer());
+    }
+
+    public void SkipIntro()
+    {
+        Debug.Log("[GameStartManager] SkipIntro called");
+
+        // Desactiva botones
+        if (playButton != null) playButton.gameObject.SetActive(false);
+        if (skipButton != null) skipButton.gameObject.SetActive(false);
+
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
+
+        // Quitar pantalla negra de inmediato
+        if (blackScreen != null)
+        {
+            Color color = blackScreen.color;
+            color.a = 0;
+            blackScreen.color = color;
+            blackScreenObject.SetActive(false);
+        }
+
+        if (introAudio != null && introAudio.isPlaying)
+            introAudio.Stop();
+
+        if (playerController != null)
+            playerController.enabled = true;
     }
 
     IEnumerator FadeAndEnablePlayer()
@@ -61,7 +106,10 @@ public class GameStartManager : MonoBehaviour
         blackScreen.color = color;
         blackScreenObject.SetActive(false);
 
-        float waitTime = Mathf.Max(0f, introAudio.clip.length - fadeDuration);
+        float waitTime = introAudio != null && introAudio.clip != null
+            ? Mathf.Max(0f, introAudio.clip.length - fadeDuration)
+            : 0f;
+
         yield return new WaitForSeconds(waitTime);
 
         if (playerController != null)
