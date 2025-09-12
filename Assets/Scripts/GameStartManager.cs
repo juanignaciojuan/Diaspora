@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
 using StarterAssets;
+using UnityEngine.EventSystems;
 
 public class GameStartManager : MonoBehaviour
 {
@@ -9,6 +10,7 @@ public class GameStartManager : MonoBehaviour
     public GameObject blackScreenObject;
     public Button playButton;
     public Button skipButton;   // NUEVO botón para saltar intro
+    public GameObject titleTextObject;  // 👈 Nueva referencia al texto del título
     public AudioSource introAudio;
 
     [Header("Fade Settings")]
@@ -26,6 +28,9 @@ public class GameStartManager : MonoBehaviour
         Cursor.visible = true;
 
         blackScreen = blackScreenObject.GetComponent<Image>();
+        playButton.onClick.AddListener(BeginGame);
+
+        EventSystem.current.SetSelectedGameObject(playButton.gameObject); // 👈 fuerza selección
 
         if (playButton != null)
             playButton.onClick.AddListener(BeginGame);
@@ -59,6 +64,9 @@ public class GameStartManager : MonoBehaviour
         if (introAudio != null) introAudio.Play();
 
         StartCoroutine(FadeAndEnablePlayer());
+
+        if (titleTextObject != null)
+            titleTextObject.SetActive(false);
     }
 
     public void SkipIntro()
@@ -86,6 +94,9 @@ public class GameStartManager : MonoBehaviour
 
         if (playerController != null)
             playerController.enabled = true;
+
+        if (titleTextObject != null)
+            titleTextObject.SetActive(false);
     }
 
     IEnumerator FadeAndEnablePlayer()
