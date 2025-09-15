@@ -11,6 +11,7 @@ public class GameStartManager : MonoBehaviour
     public Button playButton;
     public Button skipButton;   // NUEVO botón para saltar intro
     public GameObject titleTextObject;  // 👈 Nueva referencia al texto del título
+    public GameObject instructionsTextObject;  // 👈 Nueva referencia al texto de las instrucciones
     public AudioSource introAudio;
 
     [Header("Fade Settings")]
@@ -67,6 +68,9 @@ public class GameStartManager : MonoBehaviour
 
         if (titleTextObject != null)
             titleTextObject.SetActive(false);
+
+        if (instructionsTextObject != null)
+            instructionsTextObject.SetActive(false);
     }
 
     public void SkipIntro()
@@ -97,6 +101,9 @@ public class GameStartManager : MonoBehaviour
 
         if (titleTextObject != null)
             titleTextObject.SetActive(false);
+
+        if (instructionsTextObject != null)
+            instructionsTextObject.SetActive(false);
     }
 
     IEnumerator FadeAndEnablePlayer()
