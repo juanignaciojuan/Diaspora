@@ -13,22 +13,34 @@ public class NPCInteractable : InteractableBase
 
     private void Awake()
     {
+        // NPCs use E key
         interactionMode = InteractionMode.EKey;
     }
 
     public override void Interact()
     {
         if (dialoguePanel == null || dialogueText == null) return;
-        dialogueActive = true;
-        dialoguePanel.SetActive(true);
-        ShowNextLine();
+
+        if (!dialogueActive)
+        {
+            // first time you press E
+            dialogueActive = true;
+            dialoguePanel.SetActive(true);
+            ShowNextLine();
+        }
+        else
+        {
+            // every other press of E continues the dialogue
+            ShowNextLine();
+        }
     }
 
     private void ShowNextLine()
     {
         if (currentIndex < dialogueLines.Length)
         {
-            dialogueText.text = dialogueLines[currentIndex++];
+            dialogueText.text = dialogueLines[currentIndex];
+            currentIndex++;
         }
         else
         {

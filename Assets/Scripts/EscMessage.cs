@@ -5,14 +5,11 @@ using System.Collections;
 public class EscMessageDualInputConfigurable : MonoBehaviour
 {
     [Header("UI & Sound")]
-    public string messageToShow = "Press ESC detected!";
+    public string messageToShow = "ESC pressed!";
     public AudioSource audioSource;    
     public float displayTime = 3f;
 
-    [Header("Old Input System")]
-    public KeyCode testKey = KeyCode.F;
-
-    [Header("New Input System")]
+    [Header("New Input System (optional)")]
     public InputActionReference escAction;
 
     private bool isShowing = false;
@@ -31,7 +28,8 @@ public class EscMessageDualInputConfigurable : MonoBehaviour
 
     private void Update()
     {
-        if (Input.GetKeyDown(testKey) && !isShowing)
+        // Always check the old Input for ESC
+        if (Input.GetKeyDown(KeyCode.Escape) && !isShowing)
             TriggerMessage();
     }
 

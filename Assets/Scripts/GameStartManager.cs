@@ -4,12 +4,9 @@ using StarterAssets;
 
 public class GameStartManager : MonoBehaviour
 {
-    [Header("UI Elements")]
     public Button startButton;
     public GameObject titleTextObject;
     public GameObject instructionsTextObject;
-
-    [Header("Player")]
     public FirstPersonController playerController;
 
     void Start()
@@ -23,17 +20,17 @@ public class GameStartManager : MonoBehaviour
         if (startButton != null)
         {
             startButton.onClick.RemoveAllListeners();
-            startButton.onClick.AddListener(StartGame);
+            startButton.onClick.AddListener(OnStartButtonClicked);
         }
     }
 
-    public void StartGame()
+    void OnStartButtonClicked()
     {
-        Debug.Log("[GameStartManager] StartGame called");
-
-        if (startButton != null) startButton.gameObject.SetActive(false);
-        if (titleTextObject != null) titleTextObject.SetActive(false);
-        if (instructionsTextObject != null) instructionsTextObject.SetActive(false);
+        Debug.Log("Start button clicked!");
+        
+        startButton.gameObject.SetActive(false);
+        titleTextObject?.SetActive(false);
+        instructionsTextObject?.SetActive(false);
 
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
