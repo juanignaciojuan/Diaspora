@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class DoorInteraction : InteractableBase
+public class DoorInteractable : InteractableBase
 {
     [Header("Door Settings")]
     public float openAngle = 90f;
@@ -10,8 +10,9 @@ public class DoorInteraction : InteractableBase
     private bool isOpen = false;
     private Quaternion targetRotation;
 
-    private void Start()
+    private void Awake()
     {
+        interactionMode = InteractionMode.LeftClick;
         targetRotation = transform.rotation;
     }
 
@@ -22,8 +23,22 @@ public class DoorInteraction : InteractableBase
 
     public override void Interact()
     {
+        if (isLocked)
+        {
+            UIManager.instance?.ShowInteractHint("Door is locked");
+            return;
+        }
+
         isOpen = !isOpen;
         float yRotation = isOpen ? openAngle : closeAngle;
         targetRotation = Quaternion.Euler(transform.eulerAngles.x, yRotation, transform.eulerAngles.z);
+    }
+
+    public override void ShowHover()
+    {
+        if (UIManager.instance == null) return;
+        if (isLocked) UIManager.instance.ShowInteractHint("Door is locked");
+        else UIManager.instance.ShowInteractHint(isOpen ? "Click to close door" : "Click to open door");
+        isHovering = true;
     }
 }

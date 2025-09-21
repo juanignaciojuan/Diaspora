@@ -2,57 +2,90 @@ using UnityEngine;
 
 public class PlayerInteractor : MonoBehaviour
 {
-    [Header("Interaction Settings")]
+    [Header("Raycast")]
     public float interactDistance = 3f;
-    public LayerMask interactableLayer;
+    public LayerMask interactLayer = ~0;
 
-    private Camera playerCamera;
+    [Header("References")]
+    [SerializeField] private Camera playerCamera;
+    [SerializeField] private PlayerDialogueManager dialogueManager;
+
+    private InteractableBase currentInteractable;
 
     private void Start()
     {
-        playerCamera = Camera.main;
+        if (playerCamera == null)
+            playerCamera = Camera.main;
+
+        if (dialogueManager == null)
+            dialogueManager = Object.FindFirstObjectByType<PlayerDialogueManager>();
+
+        if (playerCamera == null)
+            Debug.LogError("PlayerInteractor: No camera assigned!");
     }
 
     private void Update()
     {
-        CheckInteraction();
+        DoHoverRaycast();
+        HandleInput();
+        HandleRandomTalk();
     }
 
-    private void CheckInteraction()
+    private void DoHoverRaycast()
     {
-        Ray ray = playerCamera.ScreenPointToRay(new Vector3(Screen.width / 2f, Screen.height / 2f, 0));
-        RaycastHit hit;
+        if (playerCamera == null) return;
 
-        if (Physics.Raycast(ray, out hit, interactDistance, interactableLayer))
+        Ray ray = playerCamera.ScreenPointToRay(new Vector3(Screen.width / 2f, Screen.height / 2f));
+        Debug.DrawRay(ray.origin, ray.direction * interactDistance, Color.yellow);
+
+        if (Physics.Raycast(ray, out RaycastHit hit, interactDistance, interactLayer, QueryTriggerInteraction.Collide))
         {
-            InteractableBase interactable = hit.collider.GetComponent<InteractableBase>();
-            if (interactable != null)
+            var hitInteract = hit.collider.GetComponentInParent<InteractableBase>();
+            if (hitInteract != null)
             {
-                interactable.ShowHoverMessage();
-
-                if (interactable is DoorInteraction && Input.GetMouseButtonDown(0))
+                if (currentInteractable != hitInteract)
                 {
-                    interactable.Interact();
+                    if (currentInteractable != null) currentInteractable.HideHover();
+                    currentInteractable = hitInteract;
+                    currentInteractable.ShowHover();
                 }
-
-                if (interactable is NPCInteraction && Input.GetKeyDown(KeyCode.E))
-                {
-                    interactable.Interact();
-                }
-
-                return; // Only interact with the first valid object
+                return;
             }
         }
 
-        // Hide all hints if nothing detected
-        HideAllHoverHints();
+        // nothing hit
+        if (currentInteractable != null)
+        {
+            currentInteractable.HideHover();
+            currentInteractable = null;
+        }
     }
 
-    private void HideAllHoverHints()
+    private void HandleInput()
     {
-        foreach (var i in FindObjectsOfType<InteractableBase>())
+        if (currentInteractable == null) return;
+
+        // Left click
+        if (Input.GetMouseButtonDown(0) &&
+            (currentInteractable.interactionMode == InteractableBase.InteractionMode.LeftClick ||
+             currentInteractable.interactionMode == InteractableBase.InteractionMode.Both))
         {
-            i.HideHoverMessage();
+            currentInteractable.Interact();
         }
+
+        // E key
+        if (Input.GetKeyDown(KeyCode.E) &&
+            (currentInteractable.interactionMode == InteractableBase.InteractionMode.EKey ||
+             currentInteractable.interactionMode == InteractableBase.InteractionMode.Both))
+        {
+            currentInteractable.Interact();
+        }
+    }
+
+    private void HandleRandomTalk()
+    {
+        if (dialogueManager == null) return;
+        if (Input.GetKeyDown(KeyCode.T))
+            dialogueManager.PlayRandomDialogue();
     }
 }

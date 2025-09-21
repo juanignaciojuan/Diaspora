@@ -2,19 +2,45 @@ using UnityEngine;
 
 public abstract class InteractableBase : MonoBehaviour
 {
-    [Header("Hover Hint")]
-    public string hoverMessage = "Press E to interact";
+    public enum InteractionMode { LeftClick, EKey, Both }
 
-    public virtual void ShowHoverMessage()
+    [Header("Interactable Settings")]
+    public string hoverMessage = "Interact";
+    public bool isLocked = false;
+    public InteractionMode interactionMode = InteractionMode.LeftClick;
+
+    protected bool playerInRange = false;
+    protected bool isHovering = false;
+
+    // Called when player triggers the interaction input for this object
+    public abstract void Interact();
+
+    // Called by PlayerInteractor when we should show a hover hint
+    public virtual void ShowHover()
     {
-        UIManager.instance?.ShowInteractHint(hoverMessage);
+        if (UIManager.instance == null) return;
+        UIManager.instance.ShowInteractHint(hoverMessage);
+        isHovering = true;
     }
 
-    public virtual void HideHoverMessage()
+    public virtual void HideHover()
     {
         UIManager.instance?.HideInteractHint();
+        isHovering = false;
     }
 
-    // Called when the player interacts with this object
-    public abstract void Interact();
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag("Player"))
+            playerInRange = true;
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        if (other.CompareTag("Player"))
+        {
+            playerInRange = false;
+            HideHover();
+        }
+    }
 }

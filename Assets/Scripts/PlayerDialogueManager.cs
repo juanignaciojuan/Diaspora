@@ -43,7 +43,8 @@ public class PlayerDialogueManager : MonoBehaviour
         playerNear = state;
     }
 
-    private void PlayRandomDialogue()
+    // 🔹 Make sure this method is INSIDE the class!
+    public void PlayRandomDialogue()
     {
         if (audioSource == null || dialogueClips.Count == 0)
         {
