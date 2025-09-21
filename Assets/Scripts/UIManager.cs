@@ -1,13 +1,21 @@
+using System.Collections;
 using UnityEngine;
 using TMPro;
-using System.Collections;
+using UnityEngine.UI;
 
 public class UIManager : MonoBehaviour
 {
     public static UIManager instance;
 
+    [Header("Message Panel")]
+    public GameObject messagePanel;      // Panel containing background + text
     public TMP_Text messageText;
+    public Image messageBackground;
     public float messageDuration = 2f;
+
+    [Header("Interact Panel")]
+    public GameObject interactPanel;     // Panel showing "Press E" hints
+    public TMP_Text interactText;
 
     private Coroutine messageCoroutine;
 
@@ -18,10 +26,10 @@ public class UIManager : MonoBehaviour
         else
             instance = this;
 
-        if (messageText != null)
-            messageText.text = "";
+        HideAllUI();
     }
 
+    #region Messages
     public void ShowMessage(string message)
     {
         if (messageCoroutine != null)
@@ -32,20 +40,65 @@ public class UIManager : MonoBehaviour
 
     private IEnumerator ShowMessageRoutine(string message)
     {
-        messageText.text = message;
+        if (messagePanel != null)
+            messagePanel.SetActive(true);
+
+        if (messageText != null)
+            messageText.text = message;
+
         yield return new WaitForSeconds(messageDuration);
-        messageText.text = "";
+
+        if (messageText != null)
+            messageText.text = "";
+
+        if (messagePanel != null)
+            messagePanel.SetActive(false);
     }
 
     public void ShowLiveMessage(string message)
     {
-        messageText.text = message;
+        if (messagePanel != null)
+            messagePanel.SetActive(true);
+
+        if (messageText != null)
+            messageText.text = message;
     }
 
     public void ClearMessage()
     {
-        messageText.text = "";
+        if (messageText != null)
+            messageText.text = "";
+
+        if (messagePanel != null)
+            messagePanel.SetActive(false);
+    }
+    #endregion
+
+    #region Interact Hints
+    public void ShowInteractHint(string hint = "Press E")
+    {
+        if (interactPanel != null)
+            interactPanel.SetActive(true);
+
+        if (interactText != null)
+            interactText.text = hint;
     }
 
-}
+    public void HideInteractHint()
+    {
+        if (interactPanel != null)
+            interactPanel.SetActive(false);
+    }
+    #endregion
 
+    #region Utility
+    public void HideAllUI()
+    {
+        if (messagePanel != null)
+            messagePanel.SetActive(false);
+
+        if (interactPanel != null)
+            interactPanel.SetActive(false);
+    }
+    #endregion
+}

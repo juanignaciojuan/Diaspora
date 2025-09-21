@@ -1,21 +1,19 @@
 using UnityEngine;
-using TMPro;
-using UnityEngine.InputSystem; // For the new Input System
+using UnityEngine.InputSystem;
 using System.Collections;
 
 public class EscMessageDualInputConfigurable : MonoBehaviour
 {
     [Header("UI & Sound")]
-    public TMP_Text messageText;       // Assign your Canvas → MessageText here
-    public AudioSource audioSource;    // Sound to play
-    public float displayTime = 3f;     // Duration of message
-    [TextArea] public string messageToShow = "Press ESC detected!"; // Customizable text
+    public string messageToShow = "Press ESC detected!";
+    public AudioSource audioSource;    
+    public float displayTime = 3f;
 
     [Header("Old Input System")]
-    public KeyCode testKey = KeyCode.F; // Configurable key in Inspector (default = F)
+    public KeyCode testKey = KeyCode.F;
 
     [Header("New Input System")]
-    public InputActionReference escAction; // Optional: assign an Input Action if using the new system
+    public InputActionReference escAction;
 
     private bool isShowing = false;
 
@@ -33,11 +31,8 @@ public class EscMessageDualInputConfigurable : MonoBehaviour
 
     private void Update()
     {
-        // Old Input System fallback
         if (Input.GetKeyDown(testKey) && !isShowing)
-        {
             TriggerMessage();
-        }
     }
 
     private void OnEscPressed(InputAction.CallbackContext context)
@@ -48,23 +43,19 @@ public class EscMessageDualInputConfigurable : MonoBehaviour
 
     private void TriggerMessage()
     {
-        StartCoroutine(ShowMessage());
+        if (UIManager.instance != null)
+            UIManager.instance.ShowMessage(messageToShow);
+
         if (audioSource != null)
             audioSource.Play();
+
+        StartCoroutine(MessageCooldown());
     }
 
-    private IEnumerator ShowMessage()
+    private IEnumerator MessageCooldown()
     {
         isShowing = true;
-
-        if (messageText != null)
-            messageText.text = messageToShow; // Update text instead of hiding/showing
-
         yield return new WaitForSeconds(displayTime);
-
-        if (messageText != null)
-            messageText.text = ""; // Clear instead of disabling
-
         isShowing = false;
     }
 }

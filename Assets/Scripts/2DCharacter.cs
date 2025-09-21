@@ -1,76 +1,71 @@
+using System.Collections.Generic;
 using UnityEngine;
-using TMPro; // For TextMeshPro
-using UnityEngine.Audio;
+using TMPro;
 
 public class NPC2DCharacter : MonoBehaviour
 {
-    [Header("Billboard Settings")]
-    private Transform playerCamera;
-
     [Header("Dialogue Settings")]
-    public GameObject dialogueUI;       // UI panel for dialogue
-    public TMP_Text dialogueText;       // Text component inside panel
-    [TextArea] public string npcDialogue = "Hello traveler, welcome to my world!";
+    [Tooltip("List of dialogue lines this NPC will say, one per press of E.")]
+    public List<string> npcDialogues = new List<string>();
+
+    [Header("UI References")]
+    public GameObject dialogueUI;       // The dialogue panel
+    public TextMeshProUGUI dialogueText; // Text field inside panel
+    public GameObject promptUI;          // "Press E" prompt
+    public TextMeshProUGUI promptText;
+
+    [Header("Audio")]
+    public AudioSource dialogueSound;
+    public AudioSource responseSound;
+
+    [Header("Options")]
+    public Transform playerCamera; // For billboard effect
+    public float promptDistance = 3f;
+
     private bool playerInRange = false;
+    private int currentDialogueIndex = 0;
 
-    [Header("Interaction Prompt")]
-    public GameObject promptUI;         // UI panel or text for "Press E"
-    public TMP_Text promptText;         // TMP text for the prompt
-    public string defaultPrompt = "Press E to interact";
-
-    [Header("Audio Settings")]
-    public AudioSource audioSource;     // Shared audio source on the NPC
-    public AudioClip dialogueSound;     // Played when opening dialogue
-    public AudioClip responseSound;     // Played when closing dialogue
-
-    void Start()
+    private void Start()
     {
-        playerCamera = Camera.main.transform;
+        if (dialogueUI != null) dialogueUI.SetActive(false);
+        if (promptUI != null) promptUI.SetActive(false);
 
-        if (dialogueUI != null)
-            dialogueUI.SetActive(false);
-
-        if (promptUI != null)
-        {
-            promptUI.SetActive(false); 
-            if (promptText != null)
-                promptText.text = defaultPrompt;
-        }
+        if (playerCamera == null && Camera.main != null)
+            playerCamera = Camera.main.transform;
     }
 
-    void LateUpdate()
+    private void Update()
     {
-        // Billboard effect (always face camera)
-        Vector3 lookPos = playerCamera.position - transform.position;
-        lookPos.y = 0;
-        transform.rotation = Quaternion.LookRotation(lookPos);
+        // Always face the player (billboard effect)
+        if (playerCamera != null)
+            transform.LookAt(playerCamera);
 
-        // Interaction
         if (playerInRange && Input.GetKeyDown(KeyCode.E))
         {
-            ToggleDialogue();
+            ShowNextDialogue();
         }
     }
 
-    private void ToggleDialogue()
+    private void ShowNextDialogue()
     {
         if (dialogueUI == null || dialogueText == null) return;
 
-        if (dialogueUI.activeSelf)
+        // Show current line
+        if (currentDialogueIndex < npcDialogues.Count)
         {
-            // Closing dialogue
-            dialogueUI.SetActive(false);
-            if (audioSource != null && responseSound != null)
-                audioSource.PlayOneShot(responseSound);
+            dialogueText.text = npcDialogues[currentDialogueIndex];
+
+            if (dialogueUI != null) dialogueUI.SetActive(true);
+            if (dialogueSound != null) dialogueSound.Play();
+
+            currentDialogueIndex++;
         }
         else
         {
-            // Opening dialogue
-            dialogueUI.SetActive(true);
-            dialogueText.text = npcDialogue;
-
-            if (audioSource != null && dialogueSound != null)
-                audioSource.PlayOneShot(dialogueSound);
+            // End of dialogue → close panel and reset
+            dialogueUI.SetActive(false);
+            if (responseSound != null) responseSound.Play();
+            currentDialogueIndex = 0;
         }
     }
 
@@ -79,7 +74,12 @@ public class NPC2DCharacter : MonoBehaviour
         if (other.CompareTag("Player"))
         {
             playerInRange = true;
-            if (promptUI != null) promptUI.SetActive(true);
+            if (promptUI != null)
+            {
+                promptUI.SetActive(true);
+                if (promptText != null)
+                    promptText.text = "Presiona E para hablar";
+            }
         }
     }
 
@@ -90,6 +90,7 @@ public class NPC2DCharacter : MonoBehaviour
             playerInRange = false;
             if (promptUI != null) promptUI.SetActive(false);
             if (dialogueUI != null) dialogueUI.SetActive(false);
+            currentDialogueIndex = 0;
         }
     }
 }
