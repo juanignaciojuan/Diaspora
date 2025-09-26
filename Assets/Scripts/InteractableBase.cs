@@ -1,25 +1,63 @@
 using UnityEngine;
+using UnityEngine.UI;
 
-public abstract class InteractableBase : MonoBehaviour
+[DisallowMultipleComponent]
+public class InteractableBase : MonoBehaviour
 {
-    public enum InteractionMode { LeftClick, EKey, Both }
-
     [Header("Interactable Settings")]
-    public string hoverMessage = "Interact";
+    public string hoverMessage = "Press E";
     public bool isLocked = false;
-    public InteractionMode interactionMode = InteractionMode.LeftClick;
 
-    protected bool playerInRange = false;
+    [Header("Optional Pickup")]
+    public bool isPickup = false;
+    public AudioClip pickupSound;
+    public Image pickupDisplay; // optional UI image to toggle on pickup
+
     protected bool isHovering = false;
+    protected bool isCollected = false;
+    protected AudioSource audioSource;
 
-    // Called when player triggers the interaction input for this object
-    public abstract void Interact();
+    protected virtual void Awake()
+    {
+        audioSource = GetComponent<AudioSource>() ?? gameObject.AddComponent<AudioSource>();
+    }
 
-    // Called by PlayerInteractor when we should show a hover hint
+    /// <summary>
+    /// Called by the player to perform the interaction. Subclasses should override when needed.
+    /// Default behavior: if pickup -> pick it up; if locked -> show locked hint; else show a default message.
+    /// </summary>
+    public virtual void Interact()
+    {
+        if (isLocked)
+        {
+            UIManager.instance?.ShowInteractHint("Locked");
+            return;
+        }
+
+        if (isPickup && !isCollected)
+        {
+            Pickup();
+            return;
+        }
+
+        // Default fallback
+        UIManager.instance?.ShowMessage("Nothing happens.");
+    }
+
+    protected void Pickup()
+    {
+        isCollected = true;
+
+        if (pickupSound != null) audioSource.PlayOneShot(pickupSound);
+        if (pickupDisplay != null) pickupDisplay.gameObject.SetActive(true);
+
+        UIManager.instance?.ShowMessage("Item picked up!");
+        gameObject.SetActive(false);
+    }
+
     public virtual void ShowHover()
     {
-        if (UIManager.instance == null) return;
-        UIManager.instance.ShowInteractHint(hoverMessage);
+        UIManager.instance?.ShowInteractHint(hoverMessage);
         isHovering = true;
     }
 
@@ -27,20 +65,5 @@ public abstract class InteractableBase : MonoBehaviour
     {
         UIManager.instance?.HideInteractHint();
         isHovering = false;
-    }
-
-    private void OnTriggerEnter(Collider other)
-    {
-        if (other.CompareTag("Player"))
-            playerInRange = true;
-    }
-
-    private void OnTriggerExit(Collider other)
-    {
-        if (other.CompareTag("Player"))
-        {
-            playerInRange = false;
-            HideHover();
-        }
     }
 }

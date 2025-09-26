@@ -20,17 +20,20 @@ public class GameStartManager : MonoBehaviour
         if (startButton != null)
         {
             startButton.onClick.RemoveAllListeners();
-            startButton.onClick.AddListener(OnStartButtonClicked);
+            startButton.onClick.AddListener(StartGame);  // ✅ re-enable this line
         }
     }
 
-    void OnStartButtonClicked()
+    public void StartGame()
     {
         Debug.Log("Start button clicked!");
-        
-        startButton.gameObject.SetActive(false);
-        titleTextObject?.SetActive(false);
-        instructionsTextObject?.SetActive(false);
+
+        if (startButton != null)
+            startButton.gameObject.SetActive(false);
+        if (titleTextObject != null)
+            titleTextObject.SetActive(false);
+        if (instructionsTextObject != null)
+            instructionsTextObject.SetActive(false);
 
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
