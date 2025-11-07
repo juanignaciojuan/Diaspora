@@ -7,12 +7,12 @@ using System.Collections;
 public class XRRifleShoot : MonoBehaviour
 {
     [Header("Projectile Settings")]
-    public GameObject projectilePrefab;
+    public GameObject[] projectilePrefabs; // multiple projectile types
+    public int selectedProjectileIndex = 0;
     public Transform muzzleTransform;
     public float projectileSpeed = 20f;
 
     [Header("Fire Control")]
-    [Tooltip("Minimum delay between shots (seconds). Lower = faster fire rate.")]
     public float fireRate = 0.25f;
 
     [Header("Effects")]
@@ -22,29 +22,27 @@ public class XRRifleShoot : MonoBehaviour
     public Light muzzleLight;
     public float lightFlashDuration = 0.05f;
 
+    [Header("Recoil")]
+    [Tooltip("The physical force applied to the rifle when firing.")]
+    public float recoilForce = 5f;
+
     private UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable grab;
+    private Rigidbody rifleRigidbody;
     private bool canFire = true;
 
     private void Awake()
     {
         grab = GetComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable>();
-        grab.selectMode = UnityEngine.XR.Interaction.Toolkit.Interactables.InteractableSelectMode.Multiple; // two-hand grab
+        rifleRigidbody = GetComponent<Rigidbody>();
+        grab.selectMode = UnityEngine.XR.Interaction.Toolkit.Interactables.InteractableSelectMode.Multiple;
     }
 
-    private void OnEnable()
-    {
-        grab.activated.AddListener(OnActivate);
-    }
-
-    private void OnDisable()
-    {
-        grab.activated.RemoveListener(OnActivate);
-    }
+    private void OnEnable() => grab.activated.AddListener(OnActivate);
+    private void OnDisable() => grab.activated.RemoveListener(OnActivate);
 
     private void OnActivate(ActivateEventArgs args)
     {
-        if (canFire)
-            StartCoroutine(FireRoutine());
+        if (canFire) StartCoroutine(FireRoutine());
     }
 
     private IEnumerator FireRoutine()
@@ -57,28 +55,30 @@ public class XRRifleShoot : MonoBehaviour
 
     private void Fire()
     {
-        // Projectile
-        if (projectilePrefab && muzzleTransform)
+        if (projectilePrefabs.Length > 0 && muzzleTransform)
         {
-            GameObject proj = Instantiate(projectilePrefab, muzzleTransform.position, muzzleTransform.rotation);
+            GameObject prefab = projectilePrefabs[Mathf.Clamp(selectedProjectileIndex, 0, projectilePrefabs.Length - 1)];
+            GameObject proj = Instantiate(prefab, muzzleTransform.position, muzzleTransform.rotation);
             if (proj.TryGetComponent<Rigidbody>(out var rb))
                 rb.linearVelocity = muzzleTransform.forward * projectileSpeed;
+
+            // Apply recoil
+            if (rifleRigidbody != null)
+            {
+                rifleRigidbody.AddForce(-muzzleTransform.forward * recoilForce, ForceMode.Impulse);
+            }
+
+            // Audio
+            if (audioSource && shotSounds.Length > 0)
+            {
+                AudioClip clip = shotSounds[Random.Range(0, shotSounds.Length)];
+                audioSource.PlayOneShot(clip);
+            }
+
+            // Visuals
+            if (muzzleParticles) muzzleParticles.Play();
+            if (muzzleLight) StartCoroutine(LightFlash());
         }
-
-        // Sound
-        if (audioSource && shotSounds.Length > 0)
-        {
-            AudioClip clip = shotSounds[Random.Range(0, shotSounds.Length)];
-            audioSource.PlayOneShot(clip);
-        }
-
-        // Particles
-        if (muzzleParticles)
-            muzzleParticles.Play();
-
-        // Light flash
-        if (muzzleLight)
-            StartCoroutine(LightFlash());
     }
 
     private IEnumerator LightFlash()
@@ -86,5 +86,11 @@ public class XRRifleShoot : MonoBehaviour
         muzzleLight.enabled = true;
         yield return new WaitForSeconds(lightFlashDuration);
         muzzleLight.enabled = false;
+    }
+
+    // Optional: change projectile type externally
+    public void SetProjectileType(int index)
+    {
+        selectedProjectileIndex = Mathf.Clamp(index, 0, projectilePrefabs.Length - 1);
     }
 }
