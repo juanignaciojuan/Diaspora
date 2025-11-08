@@ -27,6 +27,7 @@ public class XRAirGlyph : MonoBehaviour
     private MaterialPropertyBlock _mpb;
     private Color _initialColor = Color.white;
 
+
     public void Initialize(float customLifetime, float customFade)
     {
         if (customLifetime > 0f) lifetime = customLifetime;

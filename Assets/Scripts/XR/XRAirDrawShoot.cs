@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
+using UnityEngine.Events;
 using System.Collections;
 
 /// <summary>
@@ -45,6 +46,10 @@ public class XRAirDrawShoot : MonoBehaviour
 
     private UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable _grab;
     private bool _canFire = true;
+
+    [Header("Haptics")]
+    [Tooltip("Invoked each time a glyph is spawned (light draw vibration). Wire to XRHapticImpulseProxy.Play().")]
+    public UnityEvent onDrawHaptics;
 
     private void Awake()
     {
@@ -110,6 +115,9 @@ public class XRAirDrawShoot : MonoBehaviour
         }
         if (muzzleParticles) muzzleParticles.Play();
         if (muzzleLight) StartCoroutine(LightFlash());
+
+        // Haptics event
+        onDrawHaptics?.Invoke();
     }
 
     private IEnumerator LightFlash()
