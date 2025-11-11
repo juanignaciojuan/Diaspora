@@ -3,209 +3,313 @@ using UnityEngine;
 
 public class DronePatrol : MonoBehaviour
 {
-    [Header("Patrol Settings")]
+    [Header("Waypoints")]
     public Transform[] waypoints;
-    public float speed = 2f;
-    
-    [Header("Bombing Settings")]
-    [Tooltip("Prefab that will be instantiated and dropped.")]
-    public GameObject bombPrefab;
-    [Tooltip("Position/orientation where the bomb should spawn.")]
-    public Transform bombSpawnPoint;
-    [Tooltip("Seconds to wait before the first bomb is dropped.")]
-    public float initialDropDelay = 2f;
-    [Tooltip("Randomized seconds between drops (min).")]
-    public float dropIntervalMin = 4f;
-    [Tooltip("Randomized seconds between drops (max).")]
-    public float dropIntervalMax = 9f;
-    [Tooltip("Impulse applied along -bombSpawnPoint.up when the bomb spawns.")]
-    public float initialDropForce = 2f;
-    [Tooltip("Enable/disable bombing behavior at runtime.")]
-    public bool enableBombing = true;
-    [Tooltip("When true, prints debug info about bombing decisions.")]
-    public bool debugLogs = false;
-    [Tooltip("Ignore player distance and always drop (testing mode).")]
-    public bool ignorePlayerDistance = false;
-    [Tooltip("Force a fixed drop interval for testing (<=0 disables).")]
-    public float testFixedInterval = 0f;
+    [Tooltip("Speed while patrolling between waypoints.")]
+    public float waypointSpeed = 6f;
+    [Tooltip("Consider waypoint reached within this XZ radius.")]
+    public float waypointArrivalRadius = 0.5f;
+    [Tooltip("If true and waypoints list is empty/short, auto-discover children named 'Waypoint' or under a child named 'Waypoints'.")]
+    public bool autoFindWaypoints = true;
 
-    [Header("Player Proximity Gate")]
-    [Tooltip("Only drop bombs when within this distance to the player. If null, main camera will be used.")]
+    [Header("Attack run")]
+    [Tooltip("Player (or camera) to target during the attack run.")]
     public Transform player;
-    public float maxDropDistance = 18f;
-    public float nearDropBonusChance = 0.5f; // extra chance to drop when very close
-    public float nearDistance = 8f;
+    [Tooltip("Horizontal speed while moving toward the player.")]
+    public float attackSpeed = 8f;
+    [Tooltip("Drop bomb when closer than this XZ distance to the player.")]
+    public float attackDropRadius = 8f;
+    [Tooltip("Maximum seconds to spend in an attack run before aborting and continuing to waypoint.")]
+    public float maxAttackTime = 3f;
+    [Tooltip("Use a random mid-leg fraction to trigger the attack.")]
+    public bool randomMidpoint = true;
+    [Tooltip("Random range [x,y] of leg fraction at which to trigger the attack.")]
+    public Vector2 midpointRange = new Vector2(0.4f, 0.6f);
+    [Tooltip("Fixed leg fraction at which to trigger the attack if randomMidpoint is false.")]
+    [Range(0.05f, 0.95f)] public float midpointFraction = 0.5f;
 
-    private Coroutine dropRoutine;
+    [Header("Altitude")]
+    [Tooltip("Desired cruising altitude above ground. < -999 keeps current Y.")]
+    public float altitudeY = 20f;
 
-    private int currentIndex = 0;
+    [Header("Smoothing")]
+    [Tooltip("Degrees per second to rotate (yaw) toward movement direction.")]
+    public float turnSpeed = 180f;
+    [Tooltip("Meters to look ahead along the current leg to curve corners.")]
+    public float lookAhead = 2f;
+    [Tooltip("Units per second squared for acceleration.")]
+    public float acceleration = 20f;
+    [Tooltip("Units per second squared for deceleration.")]
+    public float deceleration = 30f;
+
+    [Header("Bomb")]
+    public GameObject bombPrefab;
+    public Transform bombSpawnPoint;
+    [Tooltip("Impulse downward so bomb clears the drone.")]
+    public float initialDropForce = 2f;
+    public bool enableBombing = true;
+    public bool debugLogs = false;
+
+    private enum State { Patrol, Attack }
+    private State _state = State.Patrol;
+    private int _currentWp = 0; // moving from current -> next
+    private Vector3 _legStartXZ;
+    private Vector3 _legGoalXZ;
+    private float _legLength;
+    private bool _attackedThisLeg;
+    private float _attackStartTime;
+    private float _triggerFrac;
+    private float _currentSpeed; // smoothed speed used for both patrol and attack
 
     private void OnEnable()
     {
-        dropRoutine = StartCoroutine(DropLoop());
+        if (autoFindWaypoints && (waypoints == null || waypoints.Length < 2))
+            AutoPopulateWaypoints();
+        InitLeg(FindStartingIndex());
     }
 
-    private void OnDisable()
+    private int FindStartingIndex()
     {
-        if (dropRoutine != null)
+        if (waypoints == null || waypoints.Length < 2) return 0;
+        // Choose the nearest waypoint as current so we head toward the next
+        int best = 0; float bestD = float.PositiveInfinity;
+        Vector3 posXZ = new Vector3(transform.position.x, 0f, transform.position.z);
+        for (int i = 0; i < waypoints.Length; i++)
         {
-            StopCoroutine(dropRoutine);
-            dropRoutine = null;
+            if (waypoints[i] == null) continue;
+            Vector3 w = new Vector3(waypoints[i].position.x, 0f, waypoints[i].position.z);
+            float d = Vector3.Distance(posXZ, w);
+            if (d < bestD) { bestD = d; best = i; }
         }
+        return best;
     }
 
-    void Update()
+    private void InitLeg(int fromIndex)
     {
-        HandlePatrol();
+        _currentWp = Mathf.Clamp(fromIndex, 0, (waypoints != null && waypoints.Length > 0) ? waypoints.Length - 1 : 0);
+        if (waypoints == null || waypoints.Length < 2) return;
+        int next = (_currentWp + 1) % waypoints.Length;
+        Vector3 from = new Vector3(waypoints[_currentWp].position.x, 0f, waypoints[_currentWp].position.z);
+        Vector3 to = new Vector3(waypoints[next].position.x, 0f, waypoints[next].position.z);
+        _legStartXZ = from;
+        _legGoalXZ = to;
+        _legLength = Mathf.Max(0.01f, Vector3.Distance(from, to));
+        _attackedThisLeg = false;
+        _state = State.Patrol;
+        _triggerFrac = randomMidpoint ? Mathf.Clamp01(Random.Range(midpointRange.x, midpointRange.y))
+                                      : Mathf.Clamp01(midpointFraction);
+        if (debugLogs) Debug.Log($"[DronePatrol] New leg {_currentWp}->{next}, trigger@{_triggerFrac:P0}");
     }
 
-    void HandlePatrol()
+    private void Update()
     {
-        if (waypoints.Length == 0) return;
-
-        Transform target = waypoints[currentIndex];
-        transform.position = Vector3.MoveTowards(transform.position, target.position, speed * Time.deltaTime);
-
-        if (Vector3.Distance(transform.position, target.position) < 0.1f)
+        // Fallback: if no waypoints, do nothing
+        if (waypoints == null || waypoints.Length < 2)
         {
-            currentIndex = (currentIndex + 1) % waypoints.Length; // loop infinito
-        }
-    }
-
-    private IEnumerator DropLoop()
-    {
-        if (initialDropDelay > 0f)
-        {
-            yield return new WaitForSeconds(initialDropDelay);
-        }
-
-        while (true)
-        {
-            if (!enableBombing || bombPrefab == null)
+            // Simple fallback: hover toward player gently so at least moves.
+            Transform tgt = GetTarget();
+            if (tgt != null)
             {
-                yield return new WaitForSeconds(1f);
-                continue;
+                Vector3 from = transform.position;
+                Vector3 goal = AltitudePosition(tgt.position);
+                transform.position = Vector3.MoveTowards(from, goal, (waypointSpeed * 0.5f) * Time.deltaTime);
             }
+            return;
+        }
 
-            // Determine target (player or camera fallback)
-            Transform target = player != null ? player : (Camera.main != null ? Camera.main.transform : null);
-
-            bool shouldDrop = ignorePlayerDistance; // if ignoring distance, we always allow
-            if (!shouldDrop)
-            {
-                if (target != null)
-                {
-                    float dist = Vector3.Distance(transform.position, target.position);
-                    if (dist <= maxDropDistance)
-                    {
-                        shouldDrop = true;
-                    }
-                    else if (dist <= nearDistance) // nearDistance should be >= maxDropDistance for bonus, adjust docs or logic
-                    {
-                        // Bonus chance when inside nearDistance but outside max range
-                        shouldDrop = Random.value < nearDropBonusChance;
-                    }
-                    if (debugLogs)
-                        Debug.Log($"[DronePatrol] Dist={dist:F1} -> drop={shouldDrop}");
-                }
-                else
-                {
-                    // No target reference; allow drop to avoid stalling logic
-                    shouldDrop = true;
-                    if (debugLogs) Debug.Log("[DronePatrol] No target reference; allowing drop.");
-                }
-            }
-
-            if (shouldDrop)
-            {
-                DropBomb();
-            }
-
-            float wait = testFixedInterval > 0f ? testFixedInterval : Random.Range(dropIntervalMin, dropIntervalMax);
-            if (debugLogs) Debug.Log($"[DronePatrol] Next drop in {wait:F2}s");
-            yield return new WaitForSeconds(wait);
+        switch (_state)
+        {
+            case State.Patrol: UpdatePatrol(); break;
+            case State.Attack: UpdateAttack(); break;
         }
     }
 
-    public void ForceDrop()
+    private void UpdatePatrol()
     {
-        if (bombPrefab == null) return;
-        DropBombInternal();
+        int next = (_currentWp + 1) % waypoints.Length;
+        Vector3 goal = AltitudePosition(waypoints[next].position);
+        Vector3 from = transform.position;
+
+        // Compute a look-ahead target on the current leg to create a smooth curve
+        Vector3 ahead = GetLookAheadTarget(transform.position, _legStartXZ, _legGoalXZ, lookAhead);
+        Vector3 aheadGoal = AltitudePosition(ahead);
+
+        float targetSpeed = waypointSpeed;
+        float distToGoal = PlanarXZ(transform.position, goal);
+        // Gentle braking as we approach the waypoint
+        if (distToGoal < Mathf.Max(1f, lookAhead * 1.5f))
+        {
+            float t = Mathf.InverseLerp(0f, Mathf.Max(1f, lookAhead * 1.5f), distToGoal);
+            targetSpeed = Mathf.Lerp(0.5f, waypointSpeed, t);
+        }
+        UpdateSmoothedSpeed(targetSpeed);
+        MoveAndTurnTowards(aheadGoal, _currentSpeed);
+
+        // Arrived at waypoint -> advance to next leg
+        if (PlanarXZ(transform.position, goal) <= waypointArrivalRadius)
+        {
+            InitLeg(next);
+            return;
+        }
+
+        // Trigger attack at mid-leg once per leg
+        if (!_attackedThisLeg)
+        {
+            float traveled = Vector3.Distance(new Vector3(transform.position.x, 0f, transform.position.z), _legStartXZ);
+            float frac = traveled / _legLength;
+            if (frac >= _triggerFrac && GetTarget() != null)
+            {
+                _state = State.Attack;
+                _attackStartTime = Time.time;
+                if (debugLogs) Debug.Log("[DronePatrol] Attack run started");
+            }
+        }
     }
 
-    void DropBomb()
+    private void UpdateAttack()
     {
-        if (!enableBombing) return;
-        if (bombPrefab == null) return;
-        DropBombInternal();
+        Transform tgt = GetTarget();
+        if (tgt == null)
+        {
+            // No target -> abort
+            _state = State.Patrol;
+            return;
+        }
+
+    Vector3 goal = AltitudePosition(tgt.position);
+    UpdateSmoothedSpeed(attackSpeed);
+    MoveAndTurnTowards(goal, _currentSpeed);
+
+        float dist = PlanarXZ(transform.position, tgt.position);
+        bool timeUp = (Time.time - _attackStartTime) >= maxAttackTime;
+        bool closeEnough = dist <= attackDropRadius;
+
+        if (closeEnough || timeUp)
+        {
+            if (enableBombing && bombPrefab != null)
+                SpawnBomb();
+            _attackedThisLeg = true;
+            _state = State.Patrol;
+            if (debugLogs) Debug.Log($"[DronePatrol] Attack run complete (d={dist:F1}, timeUp={timeUp})");
+        }
     }
 
-    void DropBombInternal()
+    private Vector3 AltitudePosition(Vector3 source)
     {
-        // Fallback: if spawn point missing, use drone position.
+        float y = (altitudeY > -999f) ? altitudeY : transform.position.y;
+        return new Vector3(source.x, y, source.z);
+    }
+
+    private void UpdateSmoothedSpeed(float targetSpeed)
+    {
+        float dt = Time.deltaTime;
+        if (_currentSpeed < targetSpeed)
+        {
+            _currentSpeed = Mathf.Min(targetSpeed, _currentSpeed + Mathf.Max(0f, acceleration) * dt);
+        }
+        else
+        {
+            _currentSpeed = Mathf.Max(targetSpeed, _currentSpeed - Mathf.Max(0f, deceleration) * dt);
+        }
+    }
+
+    private void MoveAndTurnTowards(Vector3 targetPos, float speed)
+    {
+        Vector3 from = transform.position;
+        Vector3 to = targetPos;
+        transform.position = Vector3.MoveTowards(from, to, Mathf.Max(0f, speed) * Time.deltaTime);
+
+        Vector3 dir = to - transform.position; dir.y = 0f;
+        if (dir.sqrMagnitude > 0.0001f)
+        {
+            Quaternion targetRot = Quaternion.LookRotation(dir.normalized, Vector3.up);
+            transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRot, Mathf.Max(0f, turnSpeed) * Time.deltaTime);
+        }
+    }
+
+    private static Vector3 GetLookAheadTarget(Vector3 currentWorld, Vector3 legStartXZ, Vector3 legGoalXZ, float lookAheadDist)
+    {
+        // Project current position to the leg (XZ) and move forward by lookAheadDist
+        Vector3 p = new Vector3(currentWorld.x, 0f, currentWorld.z);
+        Vector3 a = legStartXZ; Vector3 b = legGoalXZ;
+        Vector3 ab = b - a; float abLen = ab.magnitude; if (abLen < 0.0001f) return b;
+        Vector3 abN = ab / abLen;
+        float t = Vector3.Dot(p - a, abN); // distance along the leg
+        float ahead = Mathf.Clamp(t + Mathf.Max(0f, lookAheadDist), 0f, abLen);
+        Vector3 onSeg = a + abN * ahead;
+        return onSeg;
+    }
+
+    private void SpawnBomb()
+    {
         Vector3 pos = bombSpawnPoint != null ? bombSpawnPoint.position : transform.position + Vector3.down * 0.2f;
         Quaternion rot = bombSpawnPoint != null ? bombSpawnPoint.rotation : Quaternion.identity;
-        GameObject bombInstance = Instantiate(bombPrefab, pos, rot);
-        if (debugLogs) Debug.Log("[DronePatrol] Dropped bomb " + bombInstance.name);
+        GameObject bomb = Instantiate(bombPrefab, pos, rot);
 
-        // Apply an initial downward impulse so the bomb clears the drone.
-        if (bombInstance.TryGetComponent<Rigidbody>(out var bombBody))
+        if (bomb.TryGetComponent<Rigidbody>(out var rb))
         {
-            // Ensure physics settings allow falling
-            bombBody.isKinematic = false;
-            bombBody.useGravity = true;
-            // Reset velocity to ensure deterministic drop
-            bombBody.linearVelocity = Vector3.zero;
+            rb.isKinematic = false;
+            rb.useGravity = true;
+            rb.linearVelocity = Vector3.zero;
             Vector3 dropDir = bombSpawnPoint != null ? -bombSpawnPoint.up : Vector3.down;
-            if (initialDropForce != 0f)
-            {
-                // Use impulse so mass matters less; always push downward globally if spawnPoint is mis-oriented.
-                Vector3 finalDir = dropDir.sqrMagnitude < 0.01f ? Vector3.down : dropDir;
-                bombBody.AddForce(finalDir * initialDropForce, ForceMode.Impulse);
-            }
-            // Safety: if spawn point accidentally points upward, force a small downward velocity
-            if (Vector3.Dot(dropDir, Vector3.down) < 0f)
-            {
-                bombBody.linearVelocity += Vector3.down * 2f;
-            }
-            bombBody.constraints = RigidbodyConstraints.None;
+            Vector3 finalDir = dropDir.sqrMagnitude < 0.01f ? Vector3.down : dropDir;
+            if (initialDropForce != 0f) rb.AddForce(finalDir * initialDropForce, ForceMode.Impulse);
+            if (Vector3.Dot(dropDir, Vector3.down) < 0f) rb.linearVelocity += Vector3.down * 2f;
         }
-
-        // Ensure the bomb arms after a short delay to avoid detonating against the drone.
-        if (bombInstance.TryGetComponent<XRBomb>(out var bomb))
-        {
-            bomb.ArmAfter(0.25f);
-        }
-
-        // Temporarily ignore collision with drone to prevent instant detonation or sticking
-        StartCoroutine(TemporaryIgnoreCollision(bombInstance));
+        if (bomb.TryGetComponent<XRBomb>(out var xrBomb)) xrBomb.ArmAfter(0.25f);
+        StartCoroutine(TemporaryIgnoreCollision(bomb));
     }
 
     private IEnumerator TemporaryIgnoreCollision(GameObject bomb)
     {
         if (bomb == null) yield break;
-        Collider[] bombCols = bomb.GetComponentsInChildren<Collider>();
-        Collider[] droneCols = GetComponentsInChildren<Collider>();
+        var bombCols = bomb.GetComponentsInChildren<Collider>();
+        var droneCols = GetComponentsInChildren<Collider>();
         foreach (var bc in bombCols)
-        {
             foreach (var dc in droneCols)
-            {
-                if (bc != null && dc != null)
-                {
-                    Physics.IgnoreCollision(bc, dc, true);
-                }
-            }
-        }
+                if (bc && dc) Physics.IgnoreCollision(bc, dc, true);
         yield return new WaitForSeconds(0.4f);
         foreach (var bc in bombCols)
-        {
             foreach (var dc in droneCols)
+                if (bc && dc) Physics.IgnoreCollision(bc, dc, false);
+    }
+
+    private Transform GetTarget()
+    {
+        if (player != null) return player;
+        if (Camera.main != null) return Camera.main.transform;
+        return null;
+    }
+
+    private static float PlanarXZ(Vector3 a, Vector3 b)
+    {
+        a.y = 0f; b.y = 0f; return Vector3.Distance(a, b);
+    }
+
+    private void AutoPopulateWaypoints()
+    {
+        // Look for a direct child named "Waypoints"; if found, use its children.
+        var root = transform.Find("Waypoints");
+        System.Collections.Generic.List<Transform> list = new System.Collections.Generic.List<Transform>();
+        if (root != null)
+        {
+            foreach (Transform c in root)
             {
-                if (bc != null && dc != null)
-                {
-                    Physics.IgnoreCollision(bc, dc, false);
-                }
+                if (c != null) list.Add(c);
             }
+        }
+        else
+        {
+            // Fallback: collect children whose name starts with "Waypoint"
+            foreach (Transform c in transform)
+            {
+                if (c != null && c.name.StartsWith("Waypoint")) list.Add(c);
+            }
+        }
+        if (list.Count >= 2)
+        {
+            waypoints = list.ToArray();
+            if (debugLogs) Debug.Log($"[DronePatrol] Auto-populated {waypoints.Length} waypoints.");
         }
     }
 }
