@@ -90,9 +90,42 @@ public class XRRifleShoot : MonoBehaviour
     private void OnGrabbed(SelectEnterEventArgs args)
     {
         _held = true; _currentInteractor = args.interactorObject as UnityEngine.XR.Interaction.Toolkit.Interactors.XRBaseInteractor; _currentExtraOffset = Vector3.zero;
+        IgnoreCollisionWithPlayer(true);
     }
     private void OnReleased(SelectExitEventArgs args)
-    { _held = false; _currentInteractor = null; }
+    { 
+        _held = false; _currentInteractor = null; 
+        IgnoreCollisionWithPlayer(false);
+    }
+
+    private void IgnoreCollisionWithPlayer(bool ignore)
+    {
+        if (grab == null) return;
+        
+        // Find Player CC
+        CharacterController playerCC = null;
+        if (playerVelocityProvider != null && playerVelocityProvider.root != null)
+        {
+            playerCC = playerVelocityProvider.root.GetComponent<CharacterController>();
+        }
+        if (playerCC == null)
+        {
+            GameObject p = GameObject.FindGameObjectWithTag("Player");
+            if (p != null) playerCC = p.GetComponent<CharacterController>();
+        }
+        
+        if (playerCC != null)
+        {
+            // Ignore collisions for all colliders associated with the grab interactable
+            foreach (var c in grab.colliders)
+            {
+                if (c != null) Physics.IgnoreCollision(c, playerCC, ignore);
+            }
+            // Also check the rifle's own collider if not in the list
+            Collider myCol = GetComponent<Collider>();
+            if (myCol != null) Physics.IgnoreCollision(myCol, playerCC, ignore);
+        }
+    }
 
     private void LateUpdate()
     {

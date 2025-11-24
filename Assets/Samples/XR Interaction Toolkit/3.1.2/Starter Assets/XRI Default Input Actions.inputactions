@@ -978,7 +978,7 @@
                     "initialStateCheck": true
                 },
                 {
-                    "name": "Hablar",
+                    "name": "Instrucciones",
                     "type": "Button",
                     "id": "3fa95386-92a7-47c6-9a1e-a161368bba13",
                     "expectedControlType": "",
@@ -987,9 +987,18 @@
                     "initialStateCheck": false
                 },
                 {
-                    "name": "Hablar2",
+                    "name": "Camara",
                     "type": "Button",
                     "id": "b598884e-1a1b-4e44-9c09-684a057efbce",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Renacer",
+                    "type": "Button",
+                    "id": "fefc44c6-6184-4396-8c82-c1b74475f9c0",
                     "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
@@ -1081,7 +1090,7 @@
                     "interactions": "",
                     "processors": "",
                     "groups": "",
-                    "action": "Hablar",
+                    "action": "Instrucciones",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
@@ -1092,7 +1101,18 @@
                     "interactions": "",
                     "processors": "",
                     "groups": "",
-                    "action": "Hablar2",
+                    "action": "Camara",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "d4778bc0-46e8-48f1-ac26-8ad9217d75f6",
+                    "path": "<XRController>{LeftHand}/menuButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Renacer",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },

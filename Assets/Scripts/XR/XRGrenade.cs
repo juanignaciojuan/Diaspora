@@ -63,6 +63,14 @@ public class XRGrenade : MonoBehaviour
 
     private void OnEnable()
     {
+        if (_pooledReusePending)
+        {
+            wasGrabbed = false;
+            hasExploded = false;
+            isArmed = false;
+            _pooledReusePending = false;
+        }
+
         grabInteractable.selectEntered.AddListener(OnGrab);
         // Start idle despawn timer
         if (idleDespawn > 0f)

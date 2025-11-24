@@ -312,4 +312,14 @@ public class DronePatrol : MonoBehaviour
             if (debugLogs) Debug.Log($"[DronePatrol] Auto-populated {waypoints.Length} waypoints.");
         }
     }
+
+    public void ForceAttack()
+    {
+        if (GetTarget() != null)
+        {
+            _state = State.Attack;
+            _attackStartTime = Time.time;
+            if (debugLogs) Debug.Log("[DronePatrol] Forced Attack run started");
+        }
+    }
 }

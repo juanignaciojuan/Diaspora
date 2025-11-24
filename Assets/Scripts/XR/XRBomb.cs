@@ -252,7 +252,11 @@ public class XRBomb : MonoBehaviour
                 if (grenadePrefab == null) continue;
 
                 // Spawn with a slight upward and outward velocity to spread them out
-                Vector3 spawnPosition = transform.position + Random.insideUnitSphere * 0.5f;
+                // Ensure we spawn slightly ABOVE the bomb center to avoid clipping into the ground
+                Vector3 randomOffset = Random.insideUnitSphere * 0.5f;
+                randomOffset.y = Mathf.Abs(randomOffset.y) + 0.2f; // Force Y to be positive and add buffer
+                Vector3 spawnPosition = transform.position + randomOffset;
+
                 GameObject spawnedGrenade = Instantiate(grenadePrefab, spawnPosition, Quaternion.identity);
                 
                 // Give the spawned grenade a little push

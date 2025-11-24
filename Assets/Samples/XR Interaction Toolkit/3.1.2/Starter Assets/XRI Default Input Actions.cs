@@ -1064,7 +1064,7 @@ public partial class @XRIDefaultInputActions: IInputActionCollection2, IDisposab
                     ""initialStateCheck"": true
                 },
                 {
-                    ""name"": ""Hablar"",
+                    ""name"": ""Instrucciones"",
                     ""type"": ""Button"",
                     ""id"": ""3fa95386-92a7-47c6-9a1e-a161368bba13"",
                     ""expectedControlType"": """",
@@ -1073,9 +1073,18 @@ public partial class @XRIDefaultInputActions: IInputActionCollection2, IDisposab
                     ""initialStateCheck"": false
                 },
                 {
-                    ""name"": ""Hablar2"",
+                    ""name"": ""Camara"",
                     ""type"": ""Button"",
                     ""id"": ""b598884e-1a1b-4e44-9c09-684a057efbce"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""Renacer"",
+                    ""type"": ""Button"",
+                    ""id"": ""fefc44c6-6184-4396-8c82-c1b74475f9c0"",
                     ""expectedControlType"": """",
                     ""processors"": """",
                     ""interactions"": """",
@@ -1167,7 +1176,7 @@ public partial class @XRIDefaultInputActions: IInputActionCollection2, IDisposab
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
-                    ""action"": ""Hablar"",
+                    ""action"": ""Instrucciones"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 },
@@ -1178,7 +1187,18 @@ public partial class @XRIDefaultInputActions: IInputActionCollection2, IDisposab
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",
-                    ""action"": ""Hablar2"",
+                    ""action"": ""Camara"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""d4778bc0-46e8-48f1-ac26-8ad9217d75f6"",
+                    ""path"": ""<XRController>{LeftHand}/menuButton"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Renacer"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 },
@@ -3670,8 +3690,9 @@ public partial class @XRIDefaultInputActions: IInputActionCollection2, IDisposab
         m_XRILeftInteraction_Manipulation = m_XRILeftInteraction.FindAction("Manipulation", throwIfNotFound: true);
         m_XRILeftInteraction_ScaleToggle = m_XRILeftInteraction.FindAction("Scale Toggle", throwIfNotFound: true);
         m_XRILeftInteraction_ScaleOverTime = m_XRILeftInteraction.FindAction("Scale Over Time", throwIfNotFound: true);
-        m_XRILeftInteraction_Hablar = m_XRILeftInteraction.FindAction("Hablar", throwIfNotFound: true);
-        m_XRILeftInteraction_Hablar2 = m_XRILeftInteraction.FindAction("Hablar2", throwIfNotFound: true);
+        m_XRILeftInteraction_Instrucciones = m_XRILeftInteraction.FindAction("Instrucciones", throwIfNotFound: true);
+        m_XRILeftInteraction_Camara = m_XRILeftInteraction.FindAction("Camara", throwIfNotFound: true);
+        m_XRILeftInteraction_Renacer = m_XRILeftInteraction.FindAction("Renacer", throwIfNotFound: true);
         // XRI Left Locomotion
         m_XRILeftLocomotion = asset.FindActionMap("XRI Left Locomotion", throwIfNotFound: true);
         m_XRILeftLocomotion_TeleportMode = m_XRILeftLocomotion.FindAction("Teleport Mode", throwIfNotFound: true);
@@ -4258,8 +4279,9 @@ public partial class @XRIDefaultInputActions: IInputActionCollection2, IDisposab
     private readonly InputAction m_XRILeftInteraction_Manipulation;
     private readonly InputAction m_XRILeftInteraction_ScaleToggle;
     private readonly InputAction m_XRILeftInteraction_ScaleOverTime;
-    private readonly InputAction m_XRILeftInteraction_Hablar;
-    private readonly InputAction m_XRILeftInteraction_Hablar2;
+    private readonly InputAction m_XRILeftInteraction_Instrucciones;
+    private readonly InputAction m_XRILeftInteraction_Camara;
+    private readonly InputAction m_XRILeftInteraction_Renacer;
     /// <summary>
     /// Provides access to input actions defined in input action map "XRI Left Interaction".
     /// </summary>
@@ -4320,13 +4342,17 @@ public partial class @XRIDefaultInputActions: IInputActionCollection2, IDisposab
         /// </summary>
         public InputAction @ScaleOverTime => m_Wrapper.m_XRILeftInteraction_ScaleOverTime;
         /// <summary>
-        /// Provides access to the underlying input action "XRILeftInteraction/Hablar".
+        /// Provides access to the underlying input action "XRILeftInteraction/Instrucciones".
         /// </summary>
-        public InputAction @Hablar => m_Wrapper.m_XRILeftInteraction_Hablar;
+        public InputAction @Instrucciones => m_Wrapper.m_XRILeftInteraction_Instrucciones;
         /// <summary>
-        /// Provides access to the underlying input action "XRILeftInteraction/Hablar2".
+        /// Provides access to the underlying input action "XRILeftInteraction/Camara".
         /// </summary>
-        public InputAction @Hablar2 => m_Wrapper.m_XRILeftInteraction_Hablar2;
+        public InputAction @Camara => m_Wrapper.m_XRILeftInteraction_Camara;
+        /// <summary>
+        /// Provides access to the underlying input action "XRILeftInteraction/Renacer".
+        /// </summary>
+        public InputAction @Renacer => m_Wrapper.m_XRILeftInteraction_Renacer;
         /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
@@ -4389,12 +4415,15 @@ public partial class @XRIDefaultInputActions: IInputActionCollection2, IDisposab
             @ScaleOverTime.started += instance.OnScaleOverTime;
             @ScaleOverTime.performed += instance.OnScaleOverTime;
             @ScaleOverTime.canceled += instance.OnScaleOverTime;
-            @Hablar.started += instance.OnHablar;
-            @Hablar.performed += instance.OnHablar;
-            @Hablar.canceled += instance.OnHablar;
-            @Hablar2.started += instance.OnHablar2;
-            @Hablar2.performed += instance.OnHablar2;
-            @Hablar2.canceled += instance.OnHablar2;
+            @Instrucciones.started += instance.OnInstrucciones;
+            @Instrucciones.performed += instance.OnInstrucciones;
+            @Instrucciones.canceled += instance.OnInstrucciones;
+            @Camara.started += instance.OnCamara;
+            @Camara.performed += instance.OnCamara;
+            @Camara.canceled += instance.OnCamara;
+            @Renacer.started += instance.OnRenacer;
+            @Renacer.performed += instance.OnRenacer;
+            @Renacer.canceled += instance.OnRenacer;
         }
 
         /// <summary>
@@ -4442,12 +4471,15 @@ public partial class @XRIDefaultInputActions: IInputActionCollection2, IDisposab
             @ScaleOverTime.started -= instance.OnScaleOverTime;
             @ScaleOverTime.performed -= instance.OnScaleOverTime;
             @ScaleOverTime.canceled -= instance.OnScaleOverTime;
-            @Hablar.started -= instance.OnHablar;
-            @Hablar.performed -= instance.OnHablar;
-            @Hablar.canceled -= instance.OnHablar;
-            @Hablar2.started -= instance.OnHablar2;
-            @Hablar2.performed -= instance.OnHablar2;
-            @Hablar2.canceled -= instance.OnHablar2;
+            @Instrucciones.started -= instance.OnInstrucciones;
+            @Instrucciones.performed -= instance.OnInstrucciones;
+            @Instrucciones.canceled -= instance.OnInstrucciones;
+            @Camara.started -= instance.OnCamara;
+            @Camara.performed -= instance.OnCamara;
+            @Camara.canceled -= instance.OnCamara;
+            @Renacer.started -= instance.OnRenacer;
+            @Renacer.performed -= instance.OnRenacer;
+            @Renacer.canceled -= instance.OnRenacer;
         }
 
         /// <summary>
@@ -5935,19 +5967,26 @@ public partial class @XRIDefaultInputActions: IInputActionCollection2, IDisposab
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnScaleOverTime(InputAction.CallbackContext context);
         /// <summary>
-        /// Method invoked when associated input action "Hablar" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// Method invoked when associated input action "Instrucciones" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
         /// </summary>
         /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
-        void OnHablar(InputAction.CallbackContext context);
+        void OnInstrucciones(InputAction.CallbackContext context);
         /// <summary>
-        /// Method invoked when associated input action "Hablar2" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// Method invoked when associated input action "Camara" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
         /// </summary>
         /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
-        void OnHablar2(InputAction.CallbackContext context);
+        void OnCamara(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "Renacer" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnRenacer(InputAction.CallbackContext context);
     }
     /// <summary>
     /// Interface to implement callback methods for all input action callbacks associated with input actions defined by "XRI Left Locomotion" which allows adding and removing callbacks.

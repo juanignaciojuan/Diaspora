@@ -186,7 +186,15 @@ public class XRDroneHitAndRespawn : MonoBehaviour
         // Re-enable components for respawn
         SetRenderersEnabled(true);
         SetCollidersEnabled(true);
-        if (_patrolA) _patrolA.enabled = true;
+        if (_patrolA) 
+        {
+            _patrolA.enabled = true;
+            // If it's the standard DronePatrol, force it to attack immediately
+            if (_patrolA is DronePatrol dp)
+            {
+                dp.ForceAttack();
+            }
+        }
         if (_patrolB) _patrolB.enabled = true;
 
         // Reset death flag
