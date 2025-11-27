@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 
 /// <summary>
@@ -14,6 +15,22 @@ public class AudioPlaylistPlayer : MonoBehaviour
 
     private AudioSource audioSource;
     private int currentTrackIndex = 0;
+    
+    [Header("Pitch Shifter")]
+    [Tooltip("Enable runtime pitch shifting for tracks.")]
+    public bool enablePitchShifter = false;
+    [Tooltip("Base pitch multiplier (1 = normal).")]
+    public float basePitch = 1f;
+    [Tooltip("Max random variation added/subtracted from basePitch per track.")]
+    public float pitchVariation = 0.05f;
+    [Tooltip("If true, choose a random variation for each track. Otherwise uses a deterministic variation based on track index.")]
+    public bool randomizePerTrack = true;
+    [Tooltip("Smoothly interpolate pitch when switching tracks.")]
+    public bool smoothPitchChange = true;
+    [Tooltip("Time in seconds to smooth pitch changes.")]
+    public float pitchSmoothTime = 0.15f;
+
+    private Coroutine _pitchCoroutine;
 
     void Awake()
     {
@@ -72,7 +89,81 @@ public class AudioPlaylistPlayer : MonoBehaviour
         if (trackIndex >= 0 && trackIndex < playlist.Count)
         {
             audioSource.clip = playlist[trackIndex];
+            // Apply pitch shifter before playing
+            if (enablePitchShifter)
+            {
+                float target = ComputePitchForTrack(trackIndex);
+                ApplyPitch(target, smoothPitchChange ? pitchSmoothTime : 0f);
+            }
+            else
+            {
+                ApplyPitch(basePitch, 0f);
+            }
+
             audioSource.Play();
         }
+    }
+
+    private float ComputePitchForTrack(int trackIndex)
+    {
+        float variation = 0f;
+        if (randomizePerTrack)
+        {
+            // Use a seeded pseudo-random so results are stable between runs in editor play
+            variation = (Random.value * 2f - 1f) * pitchVariation;
+        }
+        else
+        {
+            // Deterministic variation based on index
+            float t = (trackIndex % 100) / 100f; // normalized [0,1)
+            variation = (t * 2f - 1f) * pitchVariation;
+        }
+        float p = basePitch + variation;
+        return Mathf.Clamp(p, -3f, 3f);
+    }
+
+    private void ApplyPitch(float targetPitch, float smoothTime)
+    {
+        if (_pitchCoroutine != null)
+        {
+            StopCoroutine(_pitchCoroutine);
+            _pitchCoroutine = null;
+        }
+        if (smoothTime > 0f)
+            _pitchCoroutine = StartCoroutine(SmoothPitchTo(targetPitch, smoothTime));
+        else
+            audioSource.pitch = targetPitch;
+    }
+
+    private IEnumerator SmoothPitchTo(float target, float time)
+    {
+        float start = audioSource.pitch;
+        float timer = 0f;
+        while (timer < time)
+        {
+            timer += Time.deltaTime;
+            audioSource.pitch = Mathf.Lerp(start, target, timer / Mathf.Max(time, 0.0001f));
+            yield return null;
+        }
+        audioSource.pitch = target;
+    }
+
+    /// <summary>
+    /// Public API to set pitch immediately at runtime.
+    /// </summary>
+    public void SetPitchImmediate(float pitch)
+    {
+        if (audioSource == null) return;
+        if (_pitchCoroutine != null) { StopCoroutine(_pitchCoroutine); _pitchCoroutine = null; }
+        audioSource.pitch = Mathf.Clamp(pitch, -3f, 3f);
+    }
+
+    /// <summary>
+    /// Public API to set pitch with smoothing.
+    /// </summary>
+    public void SetPitchSmooth(float pitch, float smoothTime)
+    {
+        if (audioSource == null) return;
+        ApplyPitch(Mathf.Clamp(pitch, -3f, 3f), smoothTime);
     }
 }
